@@ -66,7 +66,7 @@ jobs:
               run: |
                   export HNSWLIB_NO_NATIVE=1
                   poetry install --no-interaction --no-root
-              shell: powsershell
+              shell: powershell
 
             - name: Run pytest on other OS
               if: runner.os != 'Windows'
