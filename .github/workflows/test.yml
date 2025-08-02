@@ -64,7 +64,7 @@ jobs:
             - name: Install dependencies on Windows
               if: runner.os == 'Windows'
               run: |
-                  export HNSWLIB_NO_NATIVE=1
+                  $env:HNSWLIB_NO_NATIVE = "1"
                   poetry install --no-interaction --no-root
               shell: powershell
 
