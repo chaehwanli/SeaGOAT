@@ -96,25 +96,43 @@ class Engine:
         self.cache.persist()
 
     def _create_vector_embeddings(self, minimum_chunks_to_analyze=None):
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger("engine")
+
         chunks_to_process = []
 
-        for file, _ in self.repository.top_files():
-            for chunk in file.get_chunks():
+        top_files = list(self.repository.top_files())
+        logger.debug(f"Number of top_files: {len(top_files)}")
+
+        for file, _ in top_files:
+            file_chunks = list(file.get_chunks())
+            logger.debug(f"File {getattr(file, 'path', str(file))} has {len(file_chunks)} chunks")
+            for chunk in file_chunks:
                 if chunk.chunk_id not in self.cache.data["chunks_already_analyzed"]:
                     chunks_to_process.append(chunk)
                     self.cache.data["chunks_not_yet_analyzed"].add(chunk.chunk_id)
+                else:
+                    logger.debug(f"Chunk {chunk.chunk_id} already analyzed")
+
+        logger.debug(f"Total chunks_to_process after filtering: {len(chunks_to_process)}")
 
         if minimum_chunks_to_analyze is None:
             minimum_chunks_to_analyze = min(
                 max(40, int(len(chunks_to_process) * 0.2)),
                 len(chunks_to_process),
             )
+        logger.debug(f"minimum_chunks_to_analyze: {minimum_chunks_to_analyze}")
 
-        for _ in tqdm(
+        for i, _ in tqdm(
             enumerate(range(minimum_chunks_to_analyze)),
             desc="Analyzing source code",
         ):
+            if not chunks_to_process:
+                logger.debug(f"chunks_to_process is empty at loop index {i}")
+                break
             chunk = chunks_to_process.pop(0)
+            logger.debug(f"Processing chunk {chunk.chunk_id}")
             self.process_chunk(chunk)
 
         return chunks_to_process
