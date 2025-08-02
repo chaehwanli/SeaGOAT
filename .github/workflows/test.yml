@@ -9,13 +9,10 @@ on:
 
 jobs:
     build:
-        defaults:
-            run:
-                shell: bash
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
-                os: [ubuntu-latest]
+                os: [ubuntu-latest, windows-latest]
                 python-version: ['3.13']
 
         steps:
@@ -27,17 +24,26 @@ jobs:
               with:
                   python-version: ${{ matrix.python-version }}
 
-            - name: Install ripgrep
+            - name: Install ripgrep on Ubuntu
+              if: matrix.os == 'ubuntu-latest'
               run: |
-                  if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
                     curl -LO https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep_13.0.0_amd64.deb
                     sudo dpkg -i ripgrep_13.0.0_amd64.deb
-                  elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-                    choco install ripgrep
-                  elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-                    brew install ripgrep
-                  fi
+              shell: bash
 
+            - name: Install ripgrep on Windows
+              if: matrix.os == 'windows-latest'
+              run: |
+                echo $OSTYPE
+                  choco install ripgrep
+              shell: powershell
+
+            - name: Install ripgrep on MacOS
+              if: matrix.os == 'macos-latest'
+              run: |
+                    brew install ripgrep
+              shell: bash
+    
             - name: Install Poetry
               uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1
 
@@ -46,16 +52,33 @@ jobs:
               run: |
                   export HNSWLIB_NO_NATIVE=1
                   arch -x86_64 poetry install --no-interaction --no-root
+              shell: bash
 
-            - name: Install dependencies on other OS
-              if: runner.os != 'macOS'
+            - name: Install dependencies on Ubuntu
+              if: runner.os == 'Linux'
               run: |
                   export HNSWLIB_NO_NATIVE=1
                   poetry install --no-interaction --no-root
+              shell: bash
 
-            - name: Run pytest
+            - name: Install dependencies on Windows
+              if: runner.os == 'Windows'
+              run: |
+                  export HNSWLIB_NO_NATIVE=1
+                  poetry install --no-interaction --no-root
+              shell: powsershell
+
+            - name: Run pytest on other OS
+              if: runner.os != 'Windows'
               run: |
                   poetry run pytest . -vvs --timeout=300 --cov seagoat --cov-report=xml
+              shell: bash
+
+            - name: Run pytest on Windows
+              if: runner.os == 'Windows'
+              run: |
+                  poetry run pytest . -vvs --timeout=300 --cov seagoat --cov-report=xml
+              shell: powershell
 
             - name: Upload coverage reports to Codecov
               uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5-beta
