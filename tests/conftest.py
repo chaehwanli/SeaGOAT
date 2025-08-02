@@ -304,7 +304,10 @@ def _start_server():
         def _stop():
             try:
                 if server_process.pid is not None:
-                    os.kill(server_process.pid, signal.SIGTERM)
+                    if os.name == "nt":
+                        server_process.terminate()
+                    else:
+                        os.kill(server_process.pid, signal.SIGTERM)
                 server_process.join()
             except ProcessLookupError:
                 pass
