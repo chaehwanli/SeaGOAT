@@ -17,9 +17,10 @@ def normalize_full_paths(data, repo):
         normalized_real_path = os.path.normpath(real_repo_path)
         
         if normalized_full_path.lower().startswith(normalized_real_path.lower()):
-            deep_copy_of_data["fullPath"] = normalized_full_path.replace(
-                normalized_real_path, fake_repo_path).
-            replace(os.sep, '/')
+            deep_copy_of_data["fullPath"] = (
+                normalized_full_path.replace(normalized_real_path, fake_repo_path)
+                .replace(os.sep, '/')
+            )
     else:
         deep_copy_of_data["fullPath"] = deep_copy_of_data["fullPath"].replace(
             real_repo_path, fake_repo_path
