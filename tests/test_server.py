@@ -23,13 +23,13 @@ from tests.conftest import GLOBAL_CONFIG_FILE, tempfile
 
 
 def normalize_full_paths(data, repo):
-    real_repo_path = repo.working_dir
+    real_repo_path = os.path.normpath(repo.working_dir)
     fake_repo_path = "/path/to/repo"
     deep_copy_of_data = copy.deepcopy(data)
 
     for result in deep_copy_of_data["results"]:
         full_path = os.path.normpath(result["fullPath"])
-        replaced = result["fullPath"].replace(real_repo_path, fake_repo_path)
+        replaced = full_path.replace(real_repo_path, fake_repo_path)
         result["fullPath"] = replaced.replace(os.sep, "/")
 
     return deep_copy_of_data
