@@ -78,23 +78,24 @@ def test_status_endpoint_with_all_files_analyzed(server, snapshot):
 def test_status_endpoint_with_some_files_not_analyzed(server):
     url = f"{server}/status"
 
-    # wait-for logic: 최대 10초 동안 0.2초 간격으로 /status 200 OK 응답을 기다림
-    max_wait = 10
-    interval = 0.2
+    # wait-for logic: 최대 30초 동안 0.5초 간격으로 /status 200 OK 응답을 기다림
+    # 그리고 unanalyzed chunks가 0보다 큰 상태를 기다림
+    max_wait = 30
+    interval = 0.5
     waited = 0
     while waited < max_wait:
         try:
             response = requests.get(url, timeout=2)
             if response.status_code == 200:
-                break
+                data = response.json()
+                if data["stats"]["chunks"]["unanalyzed"] > 0:
+                    break
         except Exception:
             pass
         time.sleep(interval)
         waited += interval
     else:
-        raise RuntimeError("Server did not become ready in time")
-
-    data = response.json()
+        raise RuntimeError("Server did not become ready with unanalyzed chunks in time")
 
     assert response.status_code == 200, response.text
 
