@@ -170,7 +170,9 @@ def get_server(repo_path, custom_port=None):
 
     start_server(str(repo_path), custom_port=port)
 
-    wait_for(lambda: get_server_info(repo_path), timeout=60)
+    # Windows에서는 더 긴 timeout 적용 (120초)
+    timeout = 120 if os.name == "nt" else 60
+    wait_for(lambda: get_server_info(repo_path), timeout=timeout)
 
     server_info = get_server_info(repo_path)
     click.echo(f"Server started at {server_info['address']}")
