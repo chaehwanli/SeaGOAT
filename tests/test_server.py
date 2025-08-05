@@ -347,7 +347,7 @@ def test_start_server_on_specific_port(custom_port, repo, mocker, managed_proces
 
 
 def test_query_codebase_no_results(server, snapshot):
-    query_text = "a_string_we_are_sure_does_not_exist_in_any_file_12345"
+    query_text = "this_is_a_very_unique_string_that_should_not_exist_in_any_file_67890"
     url = f"{server}/lines/query"
     response = requests.post(url, json={"queryText": query_text})
     assert response.status_code == 200, response.text
