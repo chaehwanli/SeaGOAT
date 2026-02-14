@@ -264,6 +264,13 @@ def _get_multiprocessing_context():
     return multiprocessing.get_context("forkserver")
 
 
+def _get_server_timeout():
+    """Windows에서는 spawn으로 인해 더 긴 timeout이 필요"""
+    if os.name == "nt":
+        return 10.0  # Windows: 10초
+    return 3.0  # Unix: 3초
+
+
 @pytest.fixture(name="start_server", scope="session")
 def _start_server():
     def _start(repo_path: str):
@@ -281,7 +288,7 @@ def _start_server():
             except Exception:
                 return False
 
-        wait_for(make_sure_server_is_running, timeout=3.0)
+        wait_for(make_sure_server_is_running, timeout=_get_server_timeout())
 
         try:
             server_info = get_server_info(repo_path)
@@ -304,7 +311,10 @@ def _start_server():
         def _stop():
             try:
                 if server_process.pid is not None:
-                    os.kill(server_process.pid, signal.SIGTERM)
+                    if os.name == "nt":
+                        server_process.terminate()
+                    else:
+                        os.kill(server_process.pid, signal.SIGTERM)
                 server_process.join()
             except ProcessLookupError:
                 pass
@@ -722,6 +732,14 @@ def realistic_server(start_server):
     )
     my_engine = Engine(realrepo)
     my_engine.analyze_codebase(minimum_chunks_to_analyze=339)
+
+            # Extend timeout on Windows for analysis completion
+    timeout = 120 if os.name == "nt" else 60
+    wait_for(
+        lambda: my_engine.cache.data.get("chunks_not_yet_analyzed", set()) == set(),
+        timeout=timeout,
+    )
+
     assert my_engine.cache.data["chunks_not_yet_analyzed"] == set()
 
     yield my_engine

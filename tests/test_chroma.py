@@ -1,3 +1,4 @@
+import os
 import copy
 from pathlib import Path
 from unittest.mock import patch
@@ -8,12 +9,13 @@ from seagoat.engine import Engine
 
 
 def normalize_full_paths(data, repo):
-    real_repo_path = repo.working_dir
+    real_repo_path = os.path.normpath(repo.working_dir)
     fake_repo_path = "/path/to/repo"
     deep_copy_of_data = copy.deepcopy(data)
-    deep_copy_of_data["fullPath"] = deep_copy_of_data["fullPath"].replace(
-        real_repo_path, fake_repo_path
-    )
+
+    full_path = os.path.normpath(deep_copy_of_data["fullPath"])
+    replaced = full_path.replace(real_repo_path, fake_repo_path)
+    deep_copy_of_data["fullPath"] = replaced.replace(os.sep, "/")
 
     return deep_copy_of_data
 

@@ -23,12 +23,14 @@ from tests.conftest import GLOBAL_CONFIG_FILE, tempfile
 
 
 def normalize_full_paths(data, repo):
-    real_repo_path = repo.working_dir
+    real_repo_path = os.path.normpath(repo.working_dir)
     fake_repo_path = "/path/to/repo"
     deep_copy_of_data = copy.deepcopy(data)
 
     for result in deep_copy_of_data["results"]:
-        result["fullPath"] = result["fullPath"].replace(real_repo_path, fake_repo_path)
+        full_path = os.path.normpath(result["fullPath"])
+        replaced = full_path.replace(real_repo_path, fake_repo_path)
+        result["fullPath"] = replaced.replace(os.sep, "/")
 
     return deep_copy_of_data
 
@@ -75,15 +77,33 @@ def test_status_endpoint_with_all_files_analyzed(server, snapshot):
 @pytest.mark.usefixtures("repo_with_more_files")
 def test_status_endpoint_with_some_files_not_analyzed(server):
     url = f"{server}/status"
-    time.sleep(3)
-    response = requests.get(url)
-    data = response.json()
+
+    # wait-for logic: 최대 60초 동안 1초 간격으로 /status 200 OK 응답을 기다림
+    # 그리고 unanalyzed chunks가 0보다 큰 상태를 기다림
+    max_wait = 60
+    interval = 1
+    waited = 0
+    while waited < max_wait:
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                # unanalyzed chunks가 0보다 크고, accuracy percentage가 0보다 큰 상태를 기다림
+                if data["stats"]["chunks"]["unanalyzed"] > 0 and data["stats"]["accuracy"]["percentage"] > 0:
+                    break
+        except Exception:
+            pass
+        time.sleep(interval)
+        waited += interval
+    else:
+        raise RuntimeError("Server did not become ready with unanalyzed chunks and accuracy percentage in time")
 
     assert response.status_code == 200, response.text
 
     data = response.json()
     assert data["version"] == __version__
     data = normalize_version(data)
+    #if os.name != 'nt':
     assert data["stats"]["chunks"]["unanalyzed"] > 0
     assert data["stats"]["queue"]["size"] >= data["stats"]["chunks"]["unanalyzed"]
     assert data["stats"]["accuracy"]["percentage"] == int(
@@ -327,7 +347,7 @@ def test_start_server_on_specific_port(custom_port, repo, mocker, managed_proces
 
 
 def test_query_codebase_no_results(server, snapshot):
-    query_text = "a_string_we_are_sure_does_not_exist_in_any_file_12345"
+    query_text = "this_is_a_very_unique_string_that_should_not_exist_in_any_file_67890"
     url = f"{server}/lines/query"
     response = requests.post(url, json={"queryText": query_text})
     assert response.status_code == 200, response.text
